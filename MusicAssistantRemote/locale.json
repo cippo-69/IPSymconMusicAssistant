@@ -37,7 +37,11 @@
             "Search results per type": "Suchtreffer je Art",
             "Show tone control": "Klangregelung anzeigen",
             "Reload players": "Geräte neu laden",
-            "Accent color": "Akzentfarbe"
+            "Accent color": "Akzentfarbe",
+            "Nothing in the queue.": "Nichts in der Warteschlange.",
+            "Choose music or radio": "Musik oder Radio auswählen",
+            "Starting …": "Wird gestartet …",
+            "Power": "Ein/Aus"
         }
     }
 }
