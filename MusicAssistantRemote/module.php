@@ -25,6 +25,7 @@ class MusicAssistantRemote extends IPSModuleStrict
         $this->RegisterPropertyInteger('AccentColor', 0xFD5D05);
 
         $this->RegisterAttributeString('State', '{}');
+        $this->RegisterAttributeString('Favorites', '{}');
 
         $this->SetVisualizationType(1);
     }
@@ -128,6 +129,18 @@ class MusicAssistantRemote extends IPSModuleStrict
             case 'master':
                 $this->SetMaster($pid, (bool) ($v['value'] ?? false));
                 break;
+            case 'favAdd':
+                $this->FavAdd((array) ($v['item'] ?? []));
+                break;
+            case 'favRename':
+                $this->FavChange((string) ($v['type'] ?? ''), (int) ($v['slot'] ?? -1), 'rename', (string) ($v['name'] ?? ''));
+                break;
+            case 'favDelete':
+                $this->FavChange((string) ($v['type'] ?? ''), (int) ($v['slot'] ?? -1), 'delete');
+                break;
+            case 'favMove':
+                $this->FavChange((string) ($v['type'] ?? ''), (int) ($v['slot'] ?? -1), ((int) ($v['dir'] ?? 0)) < 0 ? 'up' : 'down');
+                break;
             case 'search':
                 $this->Search((string) ($v['query'] ?? ''), (array) ($v['types'] ?? []));
                 break;
@@ -206,7 +219,8 @@ class MusicAssistantRemote extends IPSModuleStrict
             'connected' => is_array($info) && !empty($info['connected']),
             'players'   => $players,
             'showTone'  => $this->ReadPropertyBoolean('ShowTone'),
-            'types'     => json_decode($this->ReadPropertyString('MediaTypes'), true)
+            'types'     => json_decode($this->ReadPropertyString('MediaTypes'), true),
+            'favs'      => $this->Favorites()
         ];
     }
 
@@ -225,6 +239,8 @@ class MusicAssistantRemote extends IPSModuleStrict
             'title'     => $state === 'idle' ? '' : (string) ($m['title'] ?? ''),
             'artist'    => $state === 'idle' ? '' : (string) ($m['artist'] ?? ''),
             'image'     => $state === 'idle' ? '' : (string) ($m['image_url'] ?? ''),
+            'uri'       => $state === 'idle' ? '' : (string) ($m['uri'] ?? ''),
+            'mediaType' => $state === 'idle' ? '' : (string) ($m['media_type'] ?? ''),
             'provider'  => (string) ($p['provider'] ?? ''),
             'canGroup'  => array_values(array_map('strval', (array) ($p['can_group_with'] ?? []))),
             'members'   => array_values(array_filter(array_map('strval', (array) ($p['group_members'] ?? [])), fn ($m) => $m !== ($p['player_id'] ?? ''))),
@@ -294,6 +310,108 @@ class MusicAssistantRemote extends IPSModuleStrict
             $this->UpdateVisualizationValue(json_encode(['type' => 'toast', 'text' => $this->Translate('Sync could not be changed')]));
         }
         return $ok;
+    }
+
+    // ---------- Favoriten: je Art 20 Plätze ----------
+
+    private const FAV_TYPES = ['playlist', 'radio', 'track', 'album', 'artist'];
+    private const FAV_SLOTS = 20;
+
+    /**
+     * Favorit abspielen. Slot 1–20, PlayerIDs kommagetrennt (leer = alle Geräte der Kachel).
+     */
+    public function PlayFavorite(string $Type, int $Slot, string $PlayerIDs): bool
+    {
+        $fav = $this->Favorites()[$Type][$Slot - 1] ?? null;
+        if (!is_array($fav) || empty($fav['uri'])) {
+            return false;
+        }
+        $ids = array_values(array_filter(array_map('trim', explode(',', $PlayerIDs))));
+        if (count($ids) === 0) {
+            $ids = $this->WantedList();
+        }
+        return $this->PlayMediaOn((string) $fav['uri'], $ids, 'replace');
+    }
+
+    public function GetFavorites(): string
+    {
+        return json_encode($this->Favorites());
+    }
+
+    private function Favorites(): array
+    {
+        $f = json_decode($this->ReadAttributeString('Favorites'), true);
+        $out = [];
+        foreach (self::FAV_TYPES as $t) {
+            $list = array_values((array) ($f[$t] ?? []));
+            $list = array_slice(array_pad($list, self::FAV_SLOTS, null), 0, self::FAV_SLOTS);
+            $out[$t] = array_map(fn ($x) => (is_array($x) && !empty($x['uri'])) ? $x : null, $list);
+        }
+        return $out;
+    }
+
+    private function SaveFavorites(array $Favs): void
+    {
+        $this->WriteAttributeString('Favorites', json_encode($Favs));
+        $this->UpdateVisualizationValue(json_encode(['type' => 'favs', 'favs' => $Favs]));
+    }
+
+    private function FavAdd(array $Item): void
+    {
+        $type = (string) ($Item['type'] ?? '');
+        $uri = (string) ($Item['uri'] ?? '');
+        if (!in_array($type, self::FAV_TYPES, true) || $uri === '') {
+            return;
+        }
+        $favs = $this->Favorites();
+        foreach ($favs[$type] as $f) {
+            if (is_array($f) && $f['uri'] === $uri) {
+                $this->UpdateVisualizationValue(json_encode(['type' => 'toast', 'text' => $this->Translate('Already in favorites')]));
+                return;
+            }
+        }
+        $slot = array_search(null, $favs[$type], true);
+        if ($slot === false) {
+            $this->UpdateVisualizationValue(json_encode(['type' => 'toast', 'text' => $this->Translate('All 20 slots are taken')]));
+            return;
+        }
+        $favs[$type][$slot] = [
+            'uri'   => $uri,
+            'name'  => mb_substr(trim((string) ($Item['name'] ?? '')), 0, 80),
+            'sub'   => mb_substr(trim((string) ($Item['sub'] ?? '')), 0, 80),
+            'image' => (string) ($Item['image'] ?? '')
+        ];
+        $this->SaveFavorites($favs);
+        $this->UpdateVisualizationValue(json_encode(['type' => 'toast', 'text' => sprintf($this->Translate('Saved to slot %d'), $slot + 1)]));
+    }
+
+    private function FavChange(string $Type, int $Slot, string $Action, string $Name = ''): void
+    {
+        if (!in_array($Type, self::FAV_TYPES, true) || $Slot < 0 || $Slot >= self::FAV_SLOTS) {
+            return;
+        }
+        $favs = $this->Favorites();
+        $list = $favs[$Type];
+        switch ($Action) {
+            case 'rename':
+                if (is_array($list[$Slot]) && trim($Name) !== '') {
+                    $list[$Slot]['name'] = mb_substr(trim($Name), 0, 80);
+                }
+                break;
+            case 'delete':
+                $list[$Slot] = null;
+                break;
+            case 'up':
+            case 'down':
+                $to = $Slot + ($Action === 'up' ? -1 : 1);
+                if ($to < 0 || $to >= self::FAV_SLOTS) {
+                    return;
+                }
+                [$list[$Slot], $list[$to]] = [$list[$to], $list[$Slot]];
+                break;
+        }
+        $favs[$Type] = $list;
+        $this->SaveFavorites($favs);
     }
 
     private function Search(string $Query, array $Types): void

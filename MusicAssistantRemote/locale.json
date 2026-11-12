@@ -48,7 +48,17 @@
             "All players play in sync": "Alle Geräte spielen synchron mit",
             "Cannot be synced with the other players": "Mit den anderen Geräten nicht synchronisierbar",
             "No other player can play in sync with this one": "Kein anderes Gerät kann mit diesem synchron spielen",
-            "Sync could not be changed": "Synchronisierung konnte nicht geändert werden"
+            "Sync could not be changed": "Synchronisierung konnte nicht geändert werden",
+            "Favorites": "Favoriten",
+            "Edit": "Bearbeiten",
+            "Done": "Fertig",
+            "Free": "frei",
+            "Delete": "Löschen",
+            "Save as favorite": "Als Favorit speichern",
+            "Already in favorites": "Schon in den Favoriten",
+            "All 20 slots are taken": "Alle 20 Plätze sind belegt",
+            "Saved to slot %d": "Auf Platz %d gespeichert",
+            "Save favorites with the star in Search or Now playing.": "Favoriten speicherst Du mit dem Stern in der Suche oder bei „Jetzt läuft“."
         }
     }
 }
