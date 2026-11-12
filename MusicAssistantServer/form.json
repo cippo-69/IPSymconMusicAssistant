@@ -1,0 +1,18 @@
+{
+    "elements": [
+        {"type": "Label", "caption": "Connection to the Music Assistant server (standalone or add-on)."},
+        {"type": "ValidationTextBox", "name": "Host", "caption": "Host / IP address"},
+        {"type": "NumberSpinner", "name": "Port", "caption": "Port", "minimum": 1, "maximum": 65535},
+        {"type": "PasswordTextBox", "name": "Token", "caption": "Long-lived access token"},
+        {"type": "Label", "caption": "Create the token in Music Assistant: Settings → Profile → Long-lived access tokens."},
+        {"type": "NumberSpinner", "name": "Timeout", "caption": "Command timeout", "suffix": "s", "minimum": 2, "maximum": 60}
+    ],
+    "actions": [
+        {"type": "Button", "caption": "Test connection", "onClick": "echo MAS_GetServerInfo($id);"}
+    ],
+    "status": [
+        {"code": 104, "icon": "inactive", "caption": "Host or token missing"},
+        {"code": 201, "icon": "error", "caption": "Authentication failed (check token)"},
+        {"code": 202, "icon": "error", "caption": "Not connected to Music Assistant"}
+    ]
+}

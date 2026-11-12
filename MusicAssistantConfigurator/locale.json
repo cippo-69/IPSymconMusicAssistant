@@ -1,0 +1,11 @@
+{
+    "translations": {
+        "de": {
+            "Players in Music Assistant": "Ausgabegeräte in Music Assistant",
+            "Device": "Gerät",
+            "Address": "Adresse",
+            "Provider": "Anbieter",
+            "Player ID": "Player-ID"
+        }
+    }
+}

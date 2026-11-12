@@ -1,0 +1,11 @@
+{
+    "id": "{3C6CF2E5-4FE0-4883-8104-C2B427C1CDFE}",
+    "name": "MusicAssistantAutomation",
+    "type": 3,
+    "vendor": "Music Assistant",
+    "aliases": ["Music Assistant Hintergrundmusik"],
+    "parentRequirements": ["{AB388AAD-6FDC-4C59-BED0-185716F50E2F}"],
+    "childRequirements": [],
+    "implemented": ["{062AF688-8507-4F5C-9B9C-37E9BC0B6CEA}"],
+    "prefix": "MAA"
+}

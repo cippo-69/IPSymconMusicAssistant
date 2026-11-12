@@ -1,0 +1,43 @@
+{
+    "translations": {
+        "de": {
+            "Now playing": "Jetzt läuft",
+            "Search": "Suche",
+            "Players": "Geräte",
+            "Play on": "Abspielen auf",
+            "Music or radio …": "Musik oder Radio …",
+            "Playlists": "Playlists",
+            "Radio": "Radio",
+            "Tracks": "Titel",
+            "Albums": "Alben",
+            "Artists": "Künstler",
+            "not available": "nicht erreichbar",
+            "playing": "spielt",
+            "paused": "pausiert",
+            "idle": "bereit",
+            "No players": "Keine Geräte",
+            "Not connected to Music Assistant": "Keine Verbindung zu Music Assistant",
+            "Searching …": "Suche läuft …",
+            "No results": "Keine Treffer",
+            "Select at least one player": "Bitte mindestens ein Gerät wählen",
+            "Tone control": "Klangregelung",
+            "Bass": "Bass",
+            "Mid": "Mitten",
+            "Treble": "Höhen",
+            "Gain": "Verstärkung",
+            "on": "an",
+            "off": "aus",
+            "Playback started": "Wiedergabe gestartet",
+            "Playback could not be started": "Wiedergabe konnte nicht gestartet werden",
+            "Tone control could not be saved": "Klangregelung konnte nicht gespeichert werden",
+            "Search failed": "Suche fehlgeschlagen",
+            "Tile for the tile visualization: now playing, search (music/radio) and players with volume and tone control.": "Kachel für die Kachel-Visualisierung: Jetzt läuft, Suche (Musik/Radio) und Geräte mit Lautstärke- und Klangregelung.",
+            "Players (empty = all visible players)": "Geräte (leer = alle sichtbaren Geräte)",
+            "Player ID": "Player-ID",
+            "Search results per type": "Suchtreffer je Art",
+            "Show tone control": "Klangregelung anzeigen",
+            "Reload players": "Geräte neu laden",
+            "Accent color": "Akzentfarbe"
+        }
+    }
+}

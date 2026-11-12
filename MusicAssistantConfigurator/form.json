@@ -1,0 +1,22 @@
+{
+    "elements": [],
+    "actions": [
+        {
+            "type": "Configurator",
+            "name": "Players",
+            "caption": "Players in Music Assistant",
+            "rowCount": 12,
+            "add": false,
+            "delete": true,
+            "sort": {"column": "name", "direction": "ascending"},
+            "columns": [
+                {"caption": "Name", "name": "name", "width": "auto"},
+                {"caption": "Device", "name": "model", "width": "220px"},
+                {"caption": "Address", "name": "address", "width": "140px"},
+                {"caption": "Provider", "name": "provider", "width": "160px"},
+                {"caption": "Player ID", "name": "playerid", "width": "260px"}
+            ],
+            "values": []
+        }
+    ]
+}

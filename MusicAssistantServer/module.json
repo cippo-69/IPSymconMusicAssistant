@@ -1,0 +1,11 @@
+{
+    "id": "{2A922FEF-DCDA-49B9-ABD0-2F074655BADC}",
+    "name": "MusicAssistantServer",
+    "type": 2,
+    "vendor": "Music Assistant",
+    "aliases": ["Music Assistant Server"],
+    "parentRequirements": ["{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}"],
+    "childRequirements": ["{062AF688-8507-4F5C-9B9C-37E9BC0B6CEA}"],
+    "implemented": ["{018EF6B5-AB94-40C6-AA53-46943E824ACF}", "{AB388AAD-6FDC-4C59-BED0-185716F50E2F}"],
+    "prefix": "MAS"
+}

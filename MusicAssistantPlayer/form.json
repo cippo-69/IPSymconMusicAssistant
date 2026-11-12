@@ -1,0 +1,16 @@
+{
+    "elements": [
+        {"type": "ValidationTextBox", "name": "PlayerID", "caption": "Player ID (from Music Assistant)"},
+        {"type": "CheckBox", "name": "ShowTone", "caption": "Show tone control (DSP of Music Assistant: bass, mid, treble, gain)"}
+    ],
+    "actions": [
+        {"type": "Button", "caption": "Refresh", "onClick": "MAP_Refresh($id);"},
+        {"type": "RowLayout", "items": [
+            {"type": "ValidationTextBox", "name": "TestURI", "caption": "Media URI"},
+            {"type": "Button", "caption": "Play", "onClick": "MAP_PlayMedia($id, $TestURI, 'replace');"}
+        ]}
+    ],
+    "status": [
+        {"code": 104, "icon": "inactive", "caption": "Player ID missing"}
+    ]
+}

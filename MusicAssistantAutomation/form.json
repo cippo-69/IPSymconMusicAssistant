@@ -1,0 +1,49 @@
+{
+    "elements": [
+        {"type": "ExpansionPanel", "caption": "Players and opening hours", "expanded": true, "items": [
+            {"type": "List", "name": "Players", "caption": "Target players (each player gets the same playlist)", "rowCount": 4, "add": true, "delete": true,
+                "columns": [{"caption": "Player ID", "name": "PlayerID", "width": "auto", "add": "", "edit": {"type": "ValidationTextBox"}}]},
+            {"type": "List", "name": "Hours", "caption": "Opening hours (music on)", "rowCount": 8, "add": true, "delete": true,
+                "columns": [
+                    {"caption": "Day", "name": "Day", "width": "160px", "add": 1, "edit": {"type": "Select", "options": [
+                        {"caption": "Monday", "value": 1}, {"caption": "Tuesday", "value": 2}, {"caption": "Wednesday", "value": 3},
+                        {"caption": "Thursday", "value": 4}, {"caption": "Friday", "value": 5}, {"caption": "Saturday", "value": 6}, {"caption": "Sunday", "value": 7}]}},
+                    {"caption": "From (HH:MM)", "name": "From", "width": "120px", "add": "09:00", "edit": {"type": "ValidationTextBox", "validate": "^([01]\\d|2[0-3]):[0-5]\\d$"}},
+                    {"caption": "To (HH:MM)", "name": "To", "width": "120px", "add": "18:00", "edit": {"type": "ValidationTextBox", "validate": "^([01]\\d|2[0-3]):[0-5]\\d$"}}
+                ]},
+            {"type": "CheckBox", "name": "PowerOffWhenClosed", "caption": "Switch players off when closed (if supported)"}
+        ]},
+        {"type": "ExpansionPanel", "caption": "Day profiles", "items": [
+            {"type": "Label", "caption": "Keywords with weight, e.g. \"soul:4, jazz:3, feel good:5\". Own playlists named \"<prefix> <profile>\" always have priority."},
+            {"type": "List", "name": "Profiles", "rowCount": 6, "add": true, "delete": true, "changeOrder": true,
+                "columns": [
+                    {"caption": "Name", "name": "Name", "width": "150px", "add": "", "edit": {"type": "ValidationTextBox"}},
+                    {"caption": "Days (1=Mon … 7=Sun)", "name": "Days", "width": "120px", "add": "1,2,3,4,5", "edit": {"type": "ValidationTextBox"}},
+                    {"caption": "From", "name": "From", "width": "80px", "add": "00:00", "edit": {"type": "ValidationTextBox"}},
+                    {"caption": "To", "name": "To", "width": "80px", "add": "23:59", "edit": {"type": "ValidationTextBox"}},
+                    {"caption": "Volume %", "name": "Volume", "width": "90px", "add": 30, "edit": {"type": "NumberSpinner", "minimum": 0, "maximum": 100}},
+                    {"caption": "Keywords", "name": "Words", "width": "auto", "add": "", "edit": {"type": "ValidationTextBox", "multiline": true}}
+                ]},
+            {"type": "ValidationTextBox", "name": "OwnPrefix", "caption": "Prefix of own playlists"}
+        ]},
+        {"type": "ExpansionPanel", "caption": "Filters and catalog", "items": [
+            {"type": "ValidationTextBox", "name": "Exclude", "caption": "Never play (whole words, comma separated)", "multiline": true, "width": "100%"},
+            {"type": "ValidationTextBox", "name": "ExcludeRegex", "caption": "Never play (regular expressions, one per line)", "multiline": true, "width": "100%"},
+            {"type": "ValidationTextBox", "name": "Season", "caption": "Season words (word:months; …)", "multiline": true, "width": "100%"},
+            {"type": "ValidationTextBox", "name": "Providers", "caption": "Music sources (provider domains, e.g. qobuz; empty = all)"},
+            {"type": "NumberSpinner", "name": "Rotate", "caption": "Change playlist after", "suffix": "min", "minimum": 10, "maximum": 600},
+            {"type": "NumberSpinner", "name": "History", "caption": "Do not repeat the last", "suffix": "playlists", "minimum": 0, "maximum": 200},
+            {"type": "NumberSpinner", "name": "TopN", "caption": "Random pick among the best", "minimum": 1, "maximum": 50},
+            {"type": "NumberSpinner", "name": "RescanDays", "caption": "Reload catalog every", "suffix": "days", "minimum": 1, "maximum": 60}
+        ]}
+    ],
+    "actions": [
+        {"type": "Button", "caption": "Run now", "onClick": "MAA_Tick($id);"},
+        {"type": "Button", "caption": "Reload catalog", "onClick": "IPS_RequestAction($id, 'Rescan', 0);"},
+        {"type": "Button", "caption": "Show candidates for current profile", "onClick": "$c = json_decode(MAA_GetCandidates($id, ''), true); foreach (array_slice($c, 0, 20) as $x) { echo $x['score'] . '  ' . $x['name'] . PHP_EOL; }"},
+        {"type": "Button", "caption": "Reset blocked playlists", "onClick": "MAA_ResetBans($id); echo 'OK';"}
+    ],
+    "status": [
+        {"code": 104, "icon": "inactive", "caption": "No target player configured"}
+    ]
+}

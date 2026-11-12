@@ -1,0 +1,30 @@
+{
+    "translations": {
+        "de": {
+            "Playback": "Wiedergabe",
+            "Previous": "Zurück",
+            "Stop": "Stopp",
+            "Play": "Abspielen",
+            "Pause": "Pause",
+            "Next": "Weiter",
+            "Volume": "Lautstärke",
+            "Mute": "Stumm",
+            "Power": "Ein/Aus",
+            "Title": "Titel",
+            "Artist": "Interpret",
+            "Album": "Album",
+            "Cover URL": "Cover-URL",
+            "Available": "Erreichbar",
+            "Tone control": "Klangregelung",
+            "Bass": "Bass",
+            "Mid": "Mitten",
+            "Treble": "Höhen",
+            "Gain": "Verstärkung",
+            "Player ID (from Music Assistant)": "Player-ID (aus Music Assistant)",
+            "Show tone control (DSP of Music Assistant: bass, mid, treble, gain)": "Klangregelung anzeigen (DSP von Music Assistant: Bass, Mitten, Höhen, Verstärkung)",
+            "Refresh": "Aktualisieren",
+            "Media URI": "Medien-URI",
+            "Player ID missing": "Player-ID fehlt"
+        }
+    }
+}

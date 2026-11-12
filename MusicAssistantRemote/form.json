@@ -1,0 +1,23 @@
+{
+    "elements": [
+        {"type": "Label", "caption": "Tile for the tile visualization: now playing, search (music/radio) and players with volume and tone control."},
+        {
+            "type": "List",
+            "name": "Players",
+            "caption": "Players (empty = all visible players)",
+            "rowCount": 6,
+            "add": true,
+            "delete": true,
+            "changeOrder": true,
+            "columns": [
+                {"caption": "Player ID", "name": "PlayerID", "width": "auto", "add": "", "edit": {"type": "ValidationTextBox"}}
+            ]
+        },
+        {"type": "NumberSpinner", "name": "SearchLimit", "caption": "Search results per type", "minimum": 3, "maximum": 50},
+        {"type": "CheckBox", "name": "ShowTone", "caption": "Show tone control"},
+        {"type": "SelectColor", "name": "AccentColor", "caption": "Accent color"}
+    ],
+    "actions": [
+        {"type": "Button", "caption": "Reload players", "onClick": "IPS_RequestAction($id, 'refresh', '{}');"}
+    ]
+}

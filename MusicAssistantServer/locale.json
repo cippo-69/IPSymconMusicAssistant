@@ -1,0 +1,15 @@
+{
+    "translations": {
+        "de": {
+            "Connection to the Music Assistant server (standalone or add-on).": "Verbindung zum Music-Assistant-Server (eigenständig oder als Add-on).",
+            "Host / IP address": "Host / IP-Adresse",
+            "Long-lived access token": "Dauerhafter Zugangsschlüssel (Token)",
+            "Create the token in Music Assistant: Settings → Profile → Long-lived access tokens.": "Token in Music Assistant anlegen: Einstellungen → Profil → Dauerhafte Zugangsschlüssel.",
+            "Command timeout": "Zeitlimit für Befehle",
+            "Test connection": "Verbindung prüfen",
+            "Host or token missing": "Host oder Token fehlt",
+            "Authentication failed (check token)": "Anmeldung fehlgeschlagen (Token prüfen)",
+            "Not connected to Music Assistant": "Keine Verbindung zu Music Assistant"
+        }
+    }
+}

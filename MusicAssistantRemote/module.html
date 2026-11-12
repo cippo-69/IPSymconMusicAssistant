@@ -1,0 +1,263 @@
+<style>
+  :root {
+    --ma-accent: #FD5D05;
+    --ma-bg: rgba(127,127,127,.08);
+    --ma-bg2: rgba(127,127,127,.16);
+    --ma-line: rgba(127,127,127,.25);
+    --ma-muted: rgba(127,127,127,1);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: inherit; }
+  #ma { display: flex; flex-direction: column; height: 100%; min-height: 0; font-size: 14px; }
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--ma-bg); border-radius: 10px; margin-bottom: 8px; flex: none; }
+  .tab { flex: 1; text-align: center; padding: 7px 4px; border-radius: 8px; cursor: pointer; user-select: none; font-weight: 600; opacity: .7; }
+  .tab.active { background: var(--ma-accent); color: #fff; opacity: 1; }
+  .view { display: none; flex: 1; min-height: 0; overflow-y: auto; }
+  .view.active { display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .chip { padding: 5px 10px; border-radius: 16px; background: var(--ma-bg2); cursor: pointer; user-select: none; font-size: 13px; white-space: nowrap; }
+  .chip.on { background: var(--ma-accent); color: #fff; }
+  .chip.off { opacity: .45; }
+  .np { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 0; }
+  .np img, .np .noimg { width: min(60vw, 220px); height: min(60vw, 220px); border-radius: 12px; object-fit: cover; background: var(--ma-bg2); }
+  .np .noimg { display: flex; align-items: center; justify-content: center; font-size: 48px; opacity: .4; }
+  .np .t { font-size: 17px; font-weight: 700; text-align: center; }
+  .np .a { color: var(--ma-muted); text-align: center; }
+  .ctrl { display: flex; gap: 14px; align-items: center; justify-content: center; }
+  .btn { border: 0; background: var(--ma-bg2); color: inherit; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; }
+  .btn.big { width: 54px; height: 54px; background: var(--ma-accent); color: #fff; font-size: 20px; }
+  .btn.small { width: 32px; height: 32px; font-size: 13px; }
+  .btn.on { background: var(--ma-accent); color: #fff; }
+  .vol { display: flex; align-items: center; gap: 8px; width: 100%; }
+  .dev .vol { margin-top: 8px; }
+  .vol input[type=range] { flex: 1; accent-color: var(--ma-accent); }
+  .vol .v { width: 38px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ma-muted); }
+  .search { display: flex; gap: 6px; }
+  .search input { flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--ma-line); background: var(--ma-bg); color: inherit; font: inherit; }
+  .search button { padding: 0 14px; border: 0; border-radius: 10px; background: var(--ma-accent); color: #fff; font-weight: 600; cursor: pointer; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ma-muted); margin: 10px 0 4px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; cursor: pointer; }
+  .item:hover { background: var(--ma-bg); }
+  .item img, .item .noimg { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--ma-bg2); flex: none; }
+  .item .txt { flex: 1; min-width: 0; }
+  .item .n { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .s { font-size: 12px; color: var(--ma-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dev { padding: 10px; border-radius: 12px; background: var(--ma-bg); margin-bottom: 8px; }
+  .dev.na { opacity: .5; }
+  .dev .head { display: flex; align-items: center; gap: 10px; }
+  .dev .head .txt { flex: 1; min-width: 0; }
+  .dev .head .n { font-weight: 700; }
+  .dev .head .s { font-size: 12px; color: var(--ma-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tone { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ma-line); }
+  .tone.open { display: block; }
+  .tone .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .tone .row span:first-child { width: 90px; color: var(--ma-muted); }
+  .tone .row input { flex: 1; accent-color: var(--ma-accent); }
+  .tone .row .v { width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ma-muted); padding: 16px 4px; text-align: center; }
+  #toast { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(0,0,0,.8); color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 13px; display: none; z-index: 9; }
+</style>
+
+<div id="ma">
+  <div class="tabs">
+    <div class="tab active" data-v="now">Now playing</div>
+    <div class="tab" data-v="search">Search</div>
+    <div class="tab" data-v="devices">Players</div>
+  </div>
+
+  <div class="view active" id="v-now">
+    <div class="chips" id="nowChips"></div>
+    <div id="nowBox"></div>
+  </div>
+
+  <div class="view" id="v-search">
+    <div class="search">
+      <input id="q" type="search" placeholder="Music or radio …" autocomplete="off">
+      <button id="qbtn">Search</button>
+    </div>
+    <div class="chips" id="typeChips"></div>
+    <div class="label">Play on</div>
+    <div class="chips" id="targetChips"></div>
+    <div id="results"></div>
+  </div>
+
+  <div class="view" id="v-devices">
+    <div id="devList"></div>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<script>
+  const MA = { state: { players: [], types: [], showTone: true, connected: false }, current: null, targets: new Set(), types: new Set(), openTone: new Set(), drag: {} };
+  const TYPE_LABEL = { playlist: 'Playlists', radio: 'Radio', track: 'Tracks', album: 'Albums', artist: 'Artists' };
+  const ICON = { play: '▶', pause: '❚❚', stop: '■', next: '⏭', prev: '⏮', mute: '🔇', vol: '🔊', power: '⏻', tone: '♫' };
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const T = (s) => (typeof translate === 'function' ? translate(s) : s);
+
+  function send(ident, value) { requestAction(ident, JSON.stringify(value)); }
+  function toast(t) { const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(MA.tt); MA.tt = setTimeout(() => el.style.display = 'none', 2500); }
+  function player(id) { return MA.state.players.find((p) => p.id === id); }
+  function stateText(p) {
+    if (!p.available) return T('not available');
+    if (p.state === 'playing') return [p.title, p.artist].filter(Boolean).join(' – ') || T('playing');
+    if (p.state === 'paused') return T('paused') + (p.title ? ': ' + p.title : '');
+    return T('idle');
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab').forEach((t) => t.onclick = () => {
+    document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
+    document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'v-' + t.dataset.v));
+  });
+
+  // ---------- Jetzt läuft ----------
+  function renderNow() {
+    const ps = MA.state.players.filter((p) => p.available);
+    if (!MA.current || !player(MA.current)) {
+      const playing = ps.find((p) => p.state === 'playing');
+      MA.current = (playing || ps[0] || {}).id || null;
+    }
+    $('nowChips').innerHTML = ps.map((p) => `<div class="chip ${p.id === MA.current ? 'on' : ''}" data-id="${esc(p.id)}">${p.state === 'playing' ? '♪ ' : ''}${esc(p.name)}</div>`).join('');
+    $('nowChips').querySelectorAll('.chip').forEach((c) => c.onclick = () => { MA.current = c.dataset.id; renderNow(); });
+    const p = player(MA.current);
+    if (!p) { $('nowBox').innerHTML = `<div class="empty">${T(MA.state.connected ? 'No players' : 'Not connected to Music Assistant')}</div>`; return; }
+    const img = p.image ? `<img src="${esc(p.image)}" onerror="this.outerHTML='<div class=noimg>♫</div>'">` : '<div class="noimg">♫</div>';
+    $('nowBox').innerHTML = `<div class="np">${img}
+      <div class="t">${esc(p.title || p.name)}</div><div class="a">${esc(p.title ? p.artist : stateText(p))}</div>
+      <div class="ctrl">
+        <button class="btn" data-c="previous">${ICON.prev}</button>
+        <button class="btn big" data-c="play_pause">${p.state === 'playing' ? ICON.pause : ICON.play}</button>
+        <button class="btn" data-c="next">${ICON.next}</button>
+      </div>
+      ${volumeRow(p)}</div>`;
+    bindPlayerControls($('nowBox'), p);
+  }
+
+  function volumeRow(p) {
+    if (p.volume === null || p.volume === undefined) return '';
+    return `<div class="vol"><button class="btn small ${p.muted ? 'on' : ''}" data-mute="1">${p.muted ? ICON.mute : ICON.vol}</button>
+      <input type="range" min="0" max="100" step="1" value="${p.volume}" data-vol="1"><span class="v">${p.volume}%</span></div>`;
+  }
+
+  function bindPlayerControls(root, p) {
+    root.querySelectorAll('[data-c]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); send('cmd', { id: p.id, cmd: b.dataset.c }); });
+    root.querySelectorAll('[data-mute]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); send('mute', { id: p.id, value: !p.muted }); });
+    root.querySelectorAll('[data-power]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); send('power', { id: p.id, value: !p.power }); });
+    root.querySelectorAll('[data-vol]').forEach((r) => {
+      const lab = r.parentElement.querySelector('.v');
+      r.oninput = () => { MA.drag[p.id] = true; lab.textContent = r.value + '%'; };
+      r.onchange = () => { MA.drag[p.id] = false; send('volume', { id: p.id, value: parseInt(r.value, 10) }); };
+    });
+  }
+
+  // ---------- Suche ----------
+  function renderSearchChips() {
+    const types = (MA.state.types || []).filter((t) => TYPE_LABEL[t]);
+    if (MA.types.size === 0) types.forEach((t) => MA.types.add(t));
+    $('typeChips').innerHTML = types.map((t) => `<div class="chip ${MA.types.has(t) ? 'on' : 'off'}" data-t="${t}">${T(TYPE_LABEL[t])}</div>`).join('');
+    $('typeChips').querySelectorAll('.chip').forEach((c) => c.onclick = () => { const t = c.dataset.t; MA.types.has(t) ? MA.types.delete(t) : MA.types.add(t); renderSearchChips(); });
+    const ps = MA.state.players.filter((p) => p.available);
+    if (MA.targets.size === 0 && MA.current) MA.targets.add(MA.current);
+    $('targetChips').innerHTML = ps.map((p) => `<div class="chip ${MA.targets.has(p.id) ? 'on' : 'off'}" data-id="${esc(p.id)}">${esc(p.name)}</div>`).join('');
+    $('targetChips').querySelectorAll('.chip').forEach((c) => c.onclick = () => { const id = c.dataset.id; MA.targets.has(id) ? MA.targets.delete(id) : MA.targets.add(id); renderSearchChips(); });
+  }
+  function doSearch() {
+    const q = $('q').value.trim();
+    if (!q) return;
+    $('results').innerHTML = `<div class="empty">${T('Searching …')}</div>`;
+    send('search', { query: q, types: Array.from(MA.types) });
+  }
+  $('qbtn').onclick = doSearch;
+  $('q').onkeydown = (e) => { if (e.key === 'Enter') doSearch(); };
+
+  function renderResults(msg) {
+    if (msg.error) { $('results').innerHTML = `<div class="empty">${esc(msg.error)}</div>`; return; }
+    let html = '';
+    (msg.groups || []).forEach((g) => {
+      if (!g.items.length) return;
+      html += `<div class="label">${T(TYPE_LABEL[g.type] || g.type)}</div>`;
+      g.items.forEach((it) => {
+        const img = it.image ? `<img src="${esc(it.image)}" loading="lazy" onerror="this.outerHTML='<div class=noimg></div>'">` : '<div class="noimg"></div>';
+        html += `<div class="item" data-uri="${esc(it.uri)}">${img}<div class="txt"><div class="n">${esc(it.name.trim())}</div><div class="s">${esc(it.sub)}</div></div><button class="btn small" data-uri="${esc(it.uri)}">${ICON.play}</button></div>`;
+      });
+    });
+    $('results').innerHTML = html || `<div class="empty">${T('No results')}</div>`;
+    $('results').querySelectorAll('.item').forEach((el) => el.onclick = () => {
+      if (MA.targets.size === 0) { toast(T('Select at least one player')); return; }
+      send('playMedia', { uri: el.dataset.uri, targets: Array.from(MA.targets), option: 'replace' });
+    });
+  }
+
+  // ---------- Geräte ----------
+  function renderDevices() {
+    const list = MA.state.players;
+    if (!list.length) { $('devList').innerHTML = `<div class="empty">${T(MA.state.connected ? 'No players' : 'Not connected to Music Assistant')}</div>`; return; }
+    $('devList').innerHTML = list.map((p) => devHTML(p)).join('');
+    list.forEach((p) => bindDevice(p));
+  }
+  function devHTML(p) {
+    const tone = p.tone && MA.state.showTone ? `<div class="tone ${MA.openTone.has(p.id) ? 'open' : ''}">
+        <div class="row"><span>${T('Tone control')}</span><button class="btn small ${p.tone.enabled ? 'on' : ''}" data-tone-en="1">${p.tone.enabled ? T('on') : T('off')}</button></div>
+        ${toneRow('bass', T('Bass'), p.tone.bass, -10, 10)}${toneRow('mid', T('Mid'), p.tone.mid, -10, 10)}${toneRow('treble', T('Treble'), p.tone.treble, -10, 10)}${toneRow('gain', T('Gain'), p.tone.gain, -15, 15)}
+      </div>` : '';
+    return `<div class="dev ${p.available ? '' : 'na'}" id="dev-${esc(p.id)}">
+      <div class="head">
+        ${p.power !== null ? `<button class="btn small ${p.power ? 'on' : ''}" data-power="1">${ICON.power}</button>` : ''}
+        <div class="txt"><div class="n">${esc(p.name)}</div><div class="s">${esc(stateText(p))}</div></div>
+        <button class="btn small" data-c="play_pause">${p.state === 'playing' ? ICON.pause : ICON.play}</button>
+        ${p.tone && MA.state.showTone ? `<button class="btn small ${MA.openTone.has(p.id) ? 'on' : ''}" data-tone-toggle="1">${ICON.tone}</button>` : ''}
+      </div>
+      ${volumeRow(p)}${tone}</div>`;
+  }
+  function toneRow(key, label, val, min, max) {
+    return `<div class="row"><span>${label}</span><input type="range" min="${min}" max="${max}" step="0.5" value="${val}" data-tone="${key}"><span class="v">${(+val).toFixed(1)} dB</span></div>`;
+  }
+  function bindDevice(p) {
+    const root = document.getElementById('dev-' + p.id);
+    if (!root) return;
+    bindPlayerControls(root, p);
+    const tg = root.querySelector('[data-tone-toggle]');
+    if (tg) tg.onclick = () => { MA.openTone.has(p.id) ? MA.openTone.delete(p.id) : MA.openTone.add(p.id); renderDevices(); };
+    const en = root.querySelector('[data-tone-en]');
+    if (en) en.onclick = () => send('tone', { id: p.id, change: { enabled: !p.tone.enabled } });
+    root.querySelectorAll('[data-tone]').forEach((r) => {
+      const lab = r.parentElement.querySelector('.v');
+      r.oninput = () => { MA.drag[p.id] = true; lab.textContent = (+r.value).toFixed(1) + ' dB'; };
+      r.onchange = () => { MA.drag[p.id] = false; send('tone', { id: p.id, change: { [r.dataset.tone]: parseFloat(r.value) } }); };
+    });
+  }
+
+  function renderAll() { renderNow(); renderSearchChips(); renderDevices(); }
+
+  // ---------- Nachrichten vom Modul ----------
+  function handleMessage(data) {
+    const msg = JSON.parse(data);
+    switch (msg.type) {
+      case 'full':
+        MA.state = msg.state;
+        renderAll();
+        break;
+      case 'player': {
+        const i = MA.state.players.findIndex((p) => p.id === msg.player.id);
+        if (i >= 0) MA.state.players[i] = msg.player; else MA.state.players.push(msg.player);
+        if (MA.drag[msg.player.id]) return;   // Regler wird gerade bewegt
+        renderNow();
+        const el = document.getElementById('dev-' + msg.player.id);
+        if (el) { el.outerHTML = devHTML(msg.player); bindDevice(msg.player); } else renderDevices();
+        renderSearchChips();
+        break;
+      }
+      case 'remove':
+        MA.state.players = MA.state.players.filter((p) => p.id !== msg.id);
+        renderAll();
+        break;
+      case 'search':
+        renderResults(msg);
+        break;
+      case 'toast':
+        toast(msg.text);
+        break;
+    }
+  }
+</script>
