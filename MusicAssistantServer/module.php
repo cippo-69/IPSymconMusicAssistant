@@ -66,6 +66,10 @@ class MusicAssistantServer extends IPSModuleStrict
         $this->SyncParent();
         $this->SetTimerInterval('Watchdog', 60 * 1000);
         $this->SetStatus(self::STATUS_NOT_CONNECTED);
+        if ($this->HasActiveParent()) {
+            // Verbindung besteht schon (z. B. nach Modul-Update): direkt anmelden
+            $this->SendRaw(['command' => 'auth', 'args' => ['token' => $this->ReadPropertyString('Token'), 'device_name' => 'IP-Symcon'], 'message_id' => 'auth']);
+        }
         $this->SetSummary($host . ':' . $this->ReadPropertyInteger('Port'));
     }
 
@@ -131,12 +135,8 @@ class MusicAssistantServer extends IPSModuleStrict
         if ($parentID === 0) {
             return;
         }
-        if ($this->GetBuffer('Authenticated') === '1') {
-            // Lebenszeichen: leichte Abfrage; scheitert sie, Verbindung neu aufbauen
-            $result = $this->Request('info', [], 5);
-            if ($result !== null) {
-                return;
-            }
+        if ($this->GetBuffer('Authenticated') === '1' && IPS_GetInstance($parentID)['InstanceStatus'] === IS_ACTIVE) {
+            return;
         }
         $this->SendDebug('Watchdog', 'nicht angemeldet → Verbindung neu aufbauen', 0);
         $this->SetBuffer('Authenticated', '0');
@@ -279,32 +279,181 @@ class MusicAssistantServer extends IPSModuleStrict
         return null;
     }
 
+    /**
+     * Befehl an Music Assistant über eine eigene, kurze WebSocket-Verbindung (Anmeldung, Befehl, Antwort, Ende).
+     * Grund: Symcon führt Aufrufe derselben Instanz nacheinander aus – auf eine Antwort über den
+     * dauerhaften WebSocket Client zu warten, würde ReceiveData blockieren. Ereignisse kommen weiter
+     * über den dauerhaften WebSocket Client.
+     */
     private function Request(string $Command, array $Args, int $Timeout): ?array
     {
-        if ($this->GetBuffer('Authenticated') !== '1' && $Command !== 'info') {
-            $this->SendDebug('Befehl', $Command . ' – nicht angemeldet', 0);
+        $host = trim($this->ReadPropertyString('Host'));
+        if ($host === '' || $this->ReadPropertyString('Token') === '') {
             return null;
         }
-        $id = bin2hex(random_bytes(6));
-        $payload = ['command' => $Command, 'message_id' => $id];
-        if (count($Args) > 0) {
-            $payload['args'] = $Args;
-        }
-        if (!$this->SendRaw($payload)) {
+        $Timeout = max(2, $Timeout);
+        $end = microtime(true) + $Timeout;
+        $errno = 0;
+        $errstr = '';
+        $s = @stream_socket_client('tcp://' . $host . ':' . $this->ReadPropertyInteger('Port'), $errno, $errstr, 3);
+        if (!$s) {
+            $this->SendDebug('Befehl', $Command . ' – keine Verbindung: ' . $errstr, 0);
             return null;
         }
-        $end = microtime(true) + max(1, $Timeout);
-        while (microtime(true) < $end) {
-            $resp = $this->GetBuffer('R_' . $id);
-            if ($resp !== '') {
-                $this->SetBuffer('R_' . $id, '');
-                return json_decode($resp, true);
+        try {
+            stream_set_timeout($s, 1);
+            $key = base64_encode(random_bytes(16));
+            fwrite($s, "GET /ws HTTP/1.1\r\nHost: " . $host . ':' . $this->ReadPropertyInteger('Port') . "\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                . "Sec-WebSocket-Key: " . $key . "\r\nSec-WebSocket-Version: 13\r\n\r\n");
+            $head = '';
+            while (!str_contains($head, "\r\n\r\n") && microtime(true) < $end) {
+                $c = fread($s, 1);
+                if ($c === false || $c === '') {
+                    if (feof($s)) {
+                        break;
+                    }
+                    continue;
+                }
+                $head .= $c;
             }
-            IPS_Sleep(25);
+            if (!str_contains($head, ' 101 ')) {
+                $this->SendDebug('Befehl', $Command . ' – Handshake fehlgeschlagen: ' . strtok($head, "\r\n"), 0);
+                return null;
+            }
+            // 1. Server-Info abwarten, 2. anmelden, 3. Befehl
+            $info = $this->WSRead($s, $end);
+            if ($info === null) {
+                return null;
+            }
+            $this->WSWrite($s, json_encode(['command' => 'auth', 'args' => ['token' => $this->ReadPropertyString('Token'), 'device_name' => 'IP-Symcon'], 'message_id' => 'a']));
+            $auth = $this->WSWaitFor($s, 'a', $end);
+            if ($auth === null || isset($auth['error_code'])) {
+                $this->SendDebug('Befehl', $Command . ' – Anmeldung fehlgeschlagen', 0);
+                return null;
+            }
+            $payload = ['command' => $Command, 'message_id' => 'c'];
+            if (count($Args) > 0) {
+                $payload['args'] = $Args;
+            }
+            $this->SendDebug('Befehl', json_encode($payload), 0);
+            $this->WSWrite($s, json_encode($payload));
+            $resp = $this->WSWaitFor($s, 'c', $end);
+            if ($resp === null) {
+                $this->SendDebug('Befehl', $Command . ' – Zeitüberschreitung', 0);
+            }
+            return $resp;
+        } finally {
+            @fwrite($s, chr(0x88) . chr(0x80) . random_bytes(4));
+            fclose($s);
         }
-        $this->SetBuffer('P_' . $id, '');
-        $this->SendDebug('Befehl', $Command . ' – Zeitüberschreitung', 0);
+    }
+
+    /** Wartet auf die Antwort mit der message_id; Teilantworten (partial) werden zusammengeführt. */
+    private function WSWaitFor($s, string $Id, float $End): ?array
+    {
+        $collected = null;
+        while (microtime(true) < $End) {
+            $msg = $this->WSRead($s, $End);
+            if ($msg === null) {
+                return null;
+            }
+            if ((string) ($msg['message_id'] ?? '') !== $Id) {
+                continue; // Ereignisse u. a. ignorieren
+            }
+            if (!empty($msg['partial'])) {
+                $collected = array_merge($collected ?? [], (array) ($msg['result'] ?? []));
+                continue;
+            }
+            if ($collected !== null) {
+                $msg['result'] = array_merge($collected, (array) ($msg['result'] ?? []));
+            }
+            return $msg;
+        }
         return null;
+    }
+
+    /** Liest eine vollständige Text-Nachricht (inkl. Fragmenten) und dekodiert JSON. */
+    private function WSRead($s, float $End): ?array
+    {
+        $data = '';
+        while (microtime(true) < $End) {
+            $h = $this->WSReadN($s, 2, $End);
+            if ($h === null) {
+                return null;
+            }
+            $fin = (ord($h[0]) & 0x80) !== 0;
+            $op = ord($h[0]) & 0x0F;
+            $len = ord($h[1]) & 0x7F;
+            if ($len === 126) {
+                $len = unpack('n', (string) $this->WSReadN($s, 2, $End))[1];
+            } elseif ($len === 127) {
+                $len = unpack('J', (string) $this->WSReadN($s, 8, $End))[1];
+            }
+            $mask = (ord($h[1]) & 0x80) ? $this->WSReadN($s, 4, $End) : null;
+            $p = $len > 0 ? $this->WSReadN($s, $len, $End) : '';
+            if ($p === null) {
+                return null;
+            }
+            if ($mask !== null) {
+                for ($i = 0; $i < strlen($p); $i++) {
+                    $p[$i] = $p[$i] ^ $mask[$i % 4];
+                }
+            }
+            if ($op === 0x9) {
+                $this->WSWrite($s, $p, 0xA);
+                continue;
+            }
+            if ($op === 0x8) {
+                return null;
+            }
+            if ($op === 0xA) {
+                continue;
+            }
+            $data .= $p;
+            if ($fin) {
+                $msg = json_decode($data, true);
+                return is_array($msg) ? $msg : ['raw' => $data];
+            }
+        }
+        return null;
+    }
+
+    private function WSReadN($s, int $n, float $End): ?string
+    {
+        $b = '';
+        while (strlen($b) < $n) {
+            if (microtime(true) > $End) {
+                return null;
+            }
+            $c = fread($s, $n - strlen($b));
+            if ($c === false || $c === '') {
+                if (feof($s)) {
+                    return null;
+                }
+                continue;
+            }
+            $b .= $c;
+        }
+        return $b;
+    }
+
+    private function WSWrite($s, string $Text, int $Op = 0x1): void
+    {
+        $len = strlen($Text);
+        $h = chr(0x80 | $Op);
+        if ($len < 126) {
+            $h .= chr(0x80 | $len);
+        } elseif ($len < 65536) {
+            $h .= chr(0x80 | 126) . pack('n', $len);
+        } else {
+            $h .= chr(0x80 | 127) . pack('J', $len);
+        }
+        $mask = random_bytes(4);
+        $m = '';
+        for ($i = 0; $i < $len; $i++) {
+            $m .= $Text[$i] ^ $mask[$i % 4];
+        }
+        fwrite($s, $h . $mask . $m);
     }
 
     private function SendRaw(array $Payload): bool
