@@ -169,7 +169,7 @@ class MusicAssistantRemote extends IPSModuleStrict
         $state = ['players' => []];
         foreach ($players as $p) {
             $pid = (string) ($p['player_id'] ?? '');
-            if (!$this->IsWanted($pid) || !empty($p['hide_in_ui']) || !empty($p['hide_player_in_ui'])) {
+            if (!$this->IsWanted($pid) || !empty($p['hide_in_ui'])) {
                 continue;
             }
             $slim = $this->SlimPlayer($p);

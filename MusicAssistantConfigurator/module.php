@@ -49,7 +49,7 @@ class MusicAssistantConfigurator extends IPSModuleStrict
 
         foreach ($players as $p) {
             $pid = (string) ($p['player_id'] ?? '');
-            if ($pid === '' || !empty($p['hide_in_ui']) || !empty($p['hide_player_in_ui'])) {
+            if ($pid === '' || !empty($p['hide_in_ui'])) {
                 continue;
             }
             $name = (string) ($p['display_name'] ?? $p['name'] ?? $pid);

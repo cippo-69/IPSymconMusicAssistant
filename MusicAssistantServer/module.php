@@ -63,6 +63,7 @@ class MusicAssistantServer extends IPSModuleStrict
             return;
         }
         $this->WriteAttributeString('BaseURL', 'http://' . $host . ':' . $this->ReadPropertyInteger('Port'));
+        $this->SyncParent();
         $this->SetTimerInterval('Watchdog', 60 * 1000);
         $this->SetStatus(self::STATUS_NOT_CONNECTED);
         $this->SetSummary($host . ':' . $this->ReadPropertyInteger('Port'));
@@ -78,6 +79,29 @@ class MusicAssistantServer extends IPSModuleStrict
             'Headers'           => '[]',
             'Active'            => $host !== '' && $this->ReadPropertyString('Token') !== ''
         ]);
+    }
+
+    /**
+     * Konfiguration des WebSocket Clients angleichen (URL, aktiv). Symcon übernimmt sie nicht in jedem Fall selbst.
+     */
+    private function SyncParent(): void
+    {
+        $parentID = $this->GetParentID();
+        if ($parentID === 0 || !IPS_InstanceExists($parentID)) {
+            return;
+        }
+        $wanted = json_decode($this->GetConfigurationForParent(), true);
+        $current = json_decode(IPS_GetConfiguration($parentID), true);
+        $changed = false;
+        foreach ($wanted as $key => $value) {
+            if (array_key_exists($key, $current) && $current[$key] !== $value) {
+                IPS_SetProperty($parentID, $key, $value);
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            IPS_ApplyChanges($parentID);
+        }
     }
 
     public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
