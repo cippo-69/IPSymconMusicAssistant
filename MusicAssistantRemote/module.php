@@ -26,6 +26,7 @@ class MusicAssistantRemote extends IPSModuleStrict
 
         $this->RegisterAttributeString('State', '{}');
         $this->RegisterAttributeString('Favorites', '{}');
+        $this->RegisterAttributeString('ExtVars', '[]');
 
         $this->SetVisualizationType(1);
     }
@@ -39,6 +40,20 @@ class MusicAssistantRemote extends IPSModuleStrict
     {
         parent::ApplyChanges();
         $this->SetReceiveDataFilter('.*"Event":"(player_updated|player_added|player_removed|connection)".*');
+        // eigene Lautstärke-/Stumm-Variablen (z. B. Gerätelautstärke eines TVs) beobachten
+        foreach ((array) json_decode($this->ReadAttributeString('ExtVars'), true) as $vid) {
+            $this->UnregisterMessage((int) $vid, VM_UPDATE);
+        }
+        $watch = [];
+        foreach ($this->ExtVars() as $ext) {
+            foreach ($ext as $vid) {
+                if ($vid > 0 && IPS_VariableExists($vid)) {
+                    $this->RegisterMessage($vid, VM_UPDATE);
+                    $watch[] = $vid;
+                }
+            }
+        }
+        $this->WriteAttributeString('ExtVars', json_encode($watch));
         if ($this->HasActiveParent()) {
             $this->LoadPlayers();
         }
@@ -78,7 +93,7 @@ class MusicAssistantRemote extends IPSModuleStrict
         if (!is_array($data['Data'] ?? null)) {
             return '';
         }
-        $slim = $this->SlimPlayer($data['Data']);
+        $slim = $this->ApplyExt($this->SlimPlayer($data['Data']));
         if (isset($state['players'][$pid]['tone'])) {
             $slim['tone'] = $state['players'][$pid]['tone'];
         }
@@ -115,10 +130,22 @@ class MusicAssistantRemote extends IPSModuleStrict
                 }
                 break;
             case 'volume':
-                $this->MACall('players/cmd/volume_set', ['player_id' => $pid, 'volume_level' => max(0, min(100, (int) ($v['value'] ?? 0)))]);
+                $vol = max(0, min(100, (int) ($v['value'] ?? 0)));
+                $ext = $this->ExtVars()[$pid]['vol'] ?? 0;
+                if ($ext > 0 && IPS_VariableExists($ext)) {
+                    RequestAction($ext, $vol);
+                } else {
+                    $this->MACall('players/cmd/volume_set', ['player_id' => $pid, 'volume_level' => $vol]);
+                }
                 break;
             case 'mute':
-                $this->MACall('players/cmd/volume_mute', ['player_id' => $pid, 'muted' => (bool) ($v['value'] ?? false)]);
+                $mute = (bool) ($v['value'] ?? false);
+                $ext = $this->ExtVars()[$pid]['mute'] ?? 0;
+                if ($ext > 0 && IPS_VariableExists($ext)) {
+                    RequestAction($ext, $mute);
+                } else {
+                    $this->MACall('players/cmd/volume_mute', ['player_id' => $pid, 'muted' => $mute]);
+                }
                 break;
             case 'power':
                 $this->MACall('players/cmd/power', ['player_id' => $pid, 'powered' => (bool) ($v['value'] ?? false)]);
@@ -188,7 +215,7 @@ class MusicAssistantRemote extends IPSModuleStrict
             if (!$this->IsWanted($pid) || !empty($p['hide_in_ui'])) {
                 continue;
             }
-            $slim = $this->SlimPlayer($p);
+            $slim = $this->ApplyExt($this->SlimPlayer($p));
             if ($this->ReadPropertyBoolean('ShowTone')) {
                 $dsp = $this->MACall('config/players/dsp/get', ['player_id' => $pid]);
                 if (is_array($dsp)) {
@@ -454,6 +481,54 @@ class MusicAssistantRemote extends IPSModuleStrict
             $groups[] = ['type' => $type, 'items' => $items];
         }
         $this->UpdateVisualizationValue(json_encode(['type' => 'search', 'query' => $Query, 'groups' => $groups]));
+    }
+
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
+    {
+        if ($Message !== VM_UPDATE) {
+            return;
+        }
+        $state = json_decode($this->ReadAttributeString('State'), true);
+        foreach ($this->ExtVars() as $pid => $ext) {
+            if (in_array($SenderID, $ext, true) && isset($state['players'][$pid])) {
+                $slim = $this->ApplyExt($state['players'][$pid]);
+                if ($slim !== $state['players'][$pid]) {
+                    $state['players'][$pid] = $slim;
+                    $this->WriteAttributeString('State', json_encode($state));
+                    $this->UpdateVisualizationValue(json_encode(['type' => 'player', 'player' => $slim]));
+                }
+            }
+        }
+    }
+
+    /**
+     * Je Player optionale Symcon-Variablen für Lautstärke (0–100) und Stumm, die statt Music Assistant geregelt werden.
+     */
+    private function ExtVars(): array
+    {
+        $out = [];
+        foreach ((array) json_decode($this->ReadPropertyString('Players'), true) as $row) {
+            $pid = (string) ($row['PlayerID'] ?? '');
+            if ($pid !== '') {
+                $out[$pid] = ['vol' => (int) ($row['VolumeVariable'] ?? 0), 'mute' => (int) ($row['MuteVariable'] ?? 0)];
+            }
+        }
+        return $out;
+    }
+
+    private function ApplyExt(array $Slim): array
+    {
+        $ext = $this->ExtVars()[$Slim['id'] ?? ''] ?? null;
+        if (!$ext) {
+            return $Slim;
+        }
+        if ($ext['vol'] > 0 && IPS_VariableExists($ext['vol'])) {
+            $Slim['volume'] = (int) round((float) GetValue($ext['vol']));
+        }
+        if ($ext['mute'] > 0 && IPS_VariableExists($ext['mute'])) {
+            $Slim['muted'] = (bool) GetValue($ext['mute']);
+        }
+        return $Slim;
     }
 
     private function WantedList(): array

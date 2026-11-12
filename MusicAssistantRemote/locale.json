@@ -58,7 +58,9 @@
             "Already in favorites": "Schon in den Favoriten",
             "All 20 slots are taken": "Alle 20 Plätze sind belegt",
             "Saved to slot %d": "Auf Platz %d gespeichert",
-            "Save favorites with the star in Search or Now playing.": "Favoriten speicherst Du mit dem Stern in der Suche oder bei „Jetzt läuft“."
+            "Save favorites with the star in Search or Now playing.": "Favoriten speicherst Du mit dem Stern in der Suche oder bei „Jetzt läuft“.",
+            "Volume variable (optional)": "Lautstärke-Variable (optional)",
+            "Mute variable (optional)": "Stumm-Variable (optional)"
         }
     }
 }
