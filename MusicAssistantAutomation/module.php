@@ -58,7 +58,11 @@ class MusicAssistantAutomation extends IPSModuleStrict
 
         $this->RegisterTimer('Tick', 0, 'MAA_Tick($_IPS[\'TARGET\']);');
 
-        $this->ConnectParent('{2A922FEF-DCDA-49B9-ABD0-2F074655BADC}');
+    }
+
+    public function GetCompatibleParents(): string
+    {
+        return json_encode(['type' => 'connect', 'moduleIDs' => ['{2A922FEF-DCDA-49B9-ABD0-2F074655BADC}']]);
     }
 
     public function ApplyChanges(): void

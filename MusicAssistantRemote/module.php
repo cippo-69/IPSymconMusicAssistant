@@ -27,7 +27,11 @@ class MusicAssistantRemote extends IPSModuleStrict
         $this->RegisterAttributeString('State', '{}');
 
         $this->SetVisualizationType(1);
-        $this->ConnectParent('{2A922FEF-DCDA-49B9-ABD0-2F074655BADC}');
+    }
+
+    public function GetCompatibleParents(): string
+    {
+        return json_encode(['type' => 'connect', 'moduleIDs' => ['{2A922FEF-DCDA-49B9-ABD0-2F074655BADC}']]);
     }
 
     public function ApplyChanges(): void

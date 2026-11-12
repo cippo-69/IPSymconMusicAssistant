@@ -32,8 +32,11 @@ class MusicAssistantServer extends IPSModuleStrict
         $this->RegisterAttributeString('BaseURL', '');
 
         $this->RegisterTimer('Watchdog', 0, 'MAS_Watchdog($_IPS[\'TARGET\']);');
+    }
 
-        $this->RequireParent(self::WS_CLIENT);
+    public function GetCompatibleParents(): string
+    {
+        return json_encode(['type' => 'require', 'moduleIDs' => [self::WS_CLIENT]]);
     }
 
     public function ApplyChanges(): void
