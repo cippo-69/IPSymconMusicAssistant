@@ -125,6 +125,9 @@ class MusicAssistantRemote extends IPSModuleStrict
             case 'tone':
                 $this->ChangeTone($pid, (array) ($v['change'] ?? []));
                 break;
+            case 'master':
+                $this->SetMaster($pid, (bool) ($v['value'] ?? false));
+                break;
             case 'search':
                 $this->Search((string) ($v['query'] ?? ''), (array) ($v['types'] ?? []));
                 break;
@@ -222,7 +225,10 @@ class MusicAssistantRemote extends IPSModuleStrict
             'title'     => $state === 'idle' ? '' : (string) ($m['title'] ?? ''),
             'artist'    => $state === 'idle' ? '' : (string) ($m['artist'] ?? ''),
             'image'     => $state === 'idle' ? '' : (string) ($m['image_url'] ?? ''),
-            'provider'  => (string) ($p['provider'] ?? '')
+            'provider'  => (string) ($p['provider'] ?? ''),
+            'canGroup'  => array_values(array_map('strval', (array) ($p['can_group_with'] ?? []))),
+            'members'   => array_values(array_filter(array_map('strval', (array) ($p['group_members'] ?? [])), fn ($m) => $m !== ($p['player_id'] ?? ''))),
+            'syncedTo'  => (string) ($p['synced_to'] ?? '')
         ];
     }
 
@@ -246,6 +252,48 @@ class MusicAssistantRemote extends IPSModuleStrict
             $this->WriteAttributeString('State', json_encode($state));
             $this->UpdateVisualizationValue(json_encode(['type' => 'player', 'player' => $state['players'][$PlayerID]]));
         }
+    }
+
+    /**
+     * Gerät als Master: alle anderen synchronisierbaren Geräte der Kachel spielen synchron mit.
+     * Aus: Gruppe auflösen.
+     */
+    public function SetMaster(string $PlayerID, bool $On): bool
+    {
+        $state = json_decode($this->ReadAttributeString('State'), true);
+        $players = (array) ($state['players'] ?? []);
+        if (!isset($players[$PlayerID])) {
+            return false;
+        }
+        $ok = true;
+        if ($On) {
+            // andere Master zuerst auflösen
+            foreach ($players as $id => $p) {
+                if ($id !== $PlayerID && !empty($p['members'])) {
+                    $ok = ($this->MACall('players/cmd/set_members', ['target_player' => (string) $id, 'player_ids_to_remove' => $p['members']]) !== false) && $ok;
+                }
+            }
+            $add = [];
+            foreach ($players[$PlayerID]['canGroup'] ?? [] as $id) {
+                if ($id !== $PlayerID && isset($players[$id]) && !empty($players[$id]['available'])) {
+                    $add[] = $id;
+                }
+            }
+            if (count($add) === 0) {
+                $this->UpdateVisualizationValue(json_encode(['type' => 'toast', 'text' => $this->Translate('No other player can play in sync with this one')]));
+                return false;
+            }
+            $ok = ($this->MACall('players/cmd/set_members', ['target_player' => $PlayerID, 'player_ids_to_add' => $add]) !== false) && $ok;
+        } else {
+            $members = $players[$PlayerID]['members'] ?? [];
+            if (count($members) > 0) {
+                $ok = $this->MACall('players/cmd/set_members', ['target_player' => $PlayerID, 'player_ids_to_remove' => $members]) !== false;
+            }
+        }
+        if (!$ok) {
+            $this->UpdateVisualizationValue(json_encode(['type' => 'toast', 'text' => $this->Translate('Sync could not be changed')]));
+        }
+        return $ok;
     }
 
     private function Search(string $Query, array $Types): void

@@ -93,6 +93,11 @@
   .switch.on { background: var(--ma-accent); }
   .switch.on::after { left: 21px; }
 
+  .sync { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--ma-line); font-size: 13px; }
+  .sync .lbl { font-weight: 600; }
+  .sync .s { color: var(--ma-muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--ma-accent); color: #fff; margin-left: 6px; vertical-align: 1px; }
+  .badge.f { background: var(--ma-bg2); color: inherit; }
   .empty { color: var(--ma-muted); padding: 24px 8px; text-align: center; }
   #toast { position: absolute; left: 50%; bottom: calc(var(--ma-nav) + 10px); transform: translateX(-50%); background: rgba(30,30,30,.92); color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 13px; display: none; z-index: 9; white-space: nowrap; }
 
@@ -280,15 +285,23 @@
         ${toneRow('bass', T('Bass'), p.tone.bass, -10, 10)}${toneRow('mid', T('Mid'), p.tone.mid, -10, 10)}${toneRow('treble', T('Treble'), p.tone.treble, -10, 10)}${toneRow('gain', T('Gain'), p.tone.gain, -15, 15)}
       </div>` : '';
     const active = p.state === 'playing' || p.state === 'paused';
+    const isMaster = (p.members || []).length > 0;
+    const leader = p.syncedTo ? player(p.syncedTo) : null;
+    const canSync = (p.canGroup || []).some((id) => id !== p.id && player(id));
+    const badge = isMaster ? `<span class="badge">${T('Master')}</span>` : (p.syncedTo ? `<span class="badge f">${T('Sync')}</span>` : '');
+    let sync = '';
+    if (leader) sync = `<div class="sync"><span class="s">${T('Plays in sync with')} ${esc(leader.name)}</span></div>`;
+    else if (canSync) sync = `<div class="sync"><span class="lbl">${T('Master')}</span><span class="s">${isMaster ? T('Plays in sync with') + ' ' + esc((p.members || []).map((m) => (player(m) || {}).name || m).join(', ')) : T('All players play in sync')}</span><button class="switch ${isMaster ? 'on' : ''}" data-master="1"></button></div>`;
+    else sync = `<div class="sync"><span class="s">${T('Cannot be synced with the other players')}</span></div>`;
     return `<div class="dev ${p.available ? '' : 'na'}" id="dev-${esc(p.id)}">
       <div class="head">
         ${thumb(p.image, 'speaker')}
-        <div class="txt"><div class="n">${esc(p.name)}</div><div class="s">${esc(stateText(p))}</div></div>
+        <div class="txt"><div class="n">${esc(p.name)}${badge}</div><div class="s">${esc(stateText(p))}</div></div>
         ${p.power !== null ? `<button class="ib sm ${p.power ? 'on' : ''}" data-power="1" title="${T('Power')}">${svg('power')}</button>` : ''}
         ${active ? `<button class="ib sm" data-c="play_pause">${svg(p.state === 'playing' ? 'pause' : 'play')}</button>` : ''}
         ${hasTone ? `<button class="ib sm ${MA.openTone.has(p.id) ? 'on' : ''}" data-tone-toggle="1" title="${T('Tone control')}">${svg('tone')}</button>` : ''}
       </div>
-      ${volumeRow(p)}${tone}</div>`;
+      ${volumeRow(p)}${sync}${tone}</div>`;
   }
   function toneRow(key, label, val, min, max) {
     return `<div class="row"><span>${label}</span><input type="range" min="${min}" max="${max}" step="0.5" value="${val}" data-tone="${key}"><span class="v">${(+val).toFixed(1)} dB</span></div>`;
@@ -299,6 +312,8 @@
     bindPlayerControls(root, p);
     const tg = root.querySelector('[data-tone-toggle]');
     if (tg) tg.onclick = () => { MA.openTone.has(p.id) ? MA.openTone.delete(p.id) : MA.openTone.add(p.id); renderDevices(); };
+    const ms = root.querySelector('[data-master]');
+    if (ms) ms.onclick = () => { ms.classList.toggle('on'); send('master', { id: p.id, value: !(p.members || []).length }); };
     const en = root.querySelector('[data-tone-en]');
     if (en) en.onclick = () => send('tone', { id: p.id, change: { enabled: !p.tone.enabled } });
     root.querySelectorAll('[data-tone]').forEach((r) => {
@@ -324,8 +339,7 @@
         if (i >= 0) MA.state.players[i] = msg.player; else MA.state.players.push(msg.player);
         if (MA.drag[msg.player.id]) return;   // Regler wird gerade bewegt
         renderNow();
-        const el = document.getElementById('dev-' + msg.player.id);
-        if (el) { el.outerHTML = devHTML(msg.player); bindDevice(msg.player); } else renderDevices();
+        renderDevices();
         renderSearchChips();
         break;
       }

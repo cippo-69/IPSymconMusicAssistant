@@ -41,7 +41,14 @@
             "Nothing in the queue.": "Nichts in der Warteschlange.",
             "Choose music or radio": "Musik oder Radio auswählen",
             "Starting …": "Wird gestartet …",
-            "Power": "Ein/Aus"
+            "Power": "Ein/Aus",
+            "Master": "Master",
+            "Sync": "Synchron",
+            "Plays in sync with": "Synchron mit",
+            "All players play in sync": "Alle Geräte spielen synchron mit",
+            "Cannot be synced with the other players": "Mit den anderen Geräten nicht synchronisierbar",
+            "No other player can play in sync with this one": "Kein anderes Gerät kann mit diesem synchron spielen",
+            "Sync could not be changed": "Synchronisierung konnte nicht geändert werden"
         }
     }
 }
