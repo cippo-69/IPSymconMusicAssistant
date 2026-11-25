@@ -250,7 +250,8 @@
 
   // Master-Schalter je Gerät: neuer Master übernimmt, laufende Musik wandert mit (Server)
   function masterBox() {
-    const ps = MA.state.players.filter((p) => p.available && (p.canGroup || []).some((id) => id !== p.id && player(id) && player(id).available));
+    // Gruppenmitglieder melden in MA kein can_group_with → auch synchrone Geräte und Master zählen
+    const ps = MA.state.players.filter((p) => p.available && (p.syncedTo || (p.members || []).length || (p.canGroup || []).some((id) => id !== p.id && player(id) && player(id).available)));
     if (ps.length < 2) return '';
     const names = (ids) => ids.map((m) => (player(m) || {}).name || m).join(', ');
     return `<div class="mbox"><div class="label">${T('Master')}</div>` + ps.map((p) => {

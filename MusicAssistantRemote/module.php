@@ -328,8 +328,15 @@ class MusicAssistantRemote extends IPSModuleStrict
                     $ok = ($this->MACall('players/cmd/set_members', ['target_player' => (string) $id, 'player_ids_to_remove' => $p['members']]) !== false) && $ok;
                 }
             }
+            // Kandidaten: eigene can_group_with plus bisherige Gruppen (Mitglieder melden kein can_group_with)
+            $cand = $players[$PlayerID]['canGroup'] ?? [];
+            foreach ($players as $id => $p) {
+                if (!empty($p['members'])) {
+                    $cand = array_merge($cand, [(string) $id], $p['members']);
+                }
+            }
             $add = [];
-            foreach ($players[$PlayerID]['canGroup'] ?? [] as $id) {
+            foreach (array_unique($cand) as $id) {
                 if ($id !== $PlayerID && isset($players[$id]) && !empty($players[$id]['available'])) {
                     $add[] = $id;
                 }
