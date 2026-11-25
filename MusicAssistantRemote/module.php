@@ -310,6 +310,18 @@ class MusicAssistantRemote extends IPSModuleStrict
         }
         $ok = true;
         if ($On) {
+            // Quelle der laufenden Musik merken: bisheriger Master bzw. Gruppe, der das Gerät folgt
+            $source = '';
+            foreach ($players as $id => $p) {
+                if ($id !== $PlayerID && !empty($p['members']) && ($p['state'] ?? '') === 'playing') {
+                    $source = (string) $id;
+                    break;
+                }
+            }
+            $self = $players[$PlayerID];
+            if ($source === '' && ($self['syncedTo'] ?? '') !== '' && (($players[$self['syncedTo']]['state'] ?? '') === 'playing')) {
+                $source = (string) $self['syncedTo'];
+            }
             // andere Master zuerst auflösen
             foreach ($players as $id => $p) {
                 if ($id !== $PlayerID && !empty($p['members'])) {
@@ -325,6 +337,10 @@ class MusicAssistantRemote extends IPSModuleStrict
             if (count($add) === 0) {
                 $this->UpdateVisualizationValue(json_encode(['type' => 'toast', 'text' => $this->Translate('No other player can play in sync with this one')]));
                 return false;
+            }
+            // neuer Master übernimmt die laufende Musik des bisherigen Masters
+            if ($source !== '' && $source !== $PlayerID) {
+                $ok = ($this->MACall('player_queues/transfer', ['source_queue_id' => $source, 'target_queue_id' => $PlayerID, 'auto_play' => true]) !== false) && $ok;
             }
             $ok = ($this->MACall('players/cmd/set_members', ['target_player' => $PlayerID, 'player_ids_to_add' => $add]) !== false) && $ok;
         } else {

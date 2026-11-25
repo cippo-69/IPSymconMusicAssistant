@@ -96,6 +96,11 @@
   .sync { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--ma-line); font-size: 13px; }
   .sync .lbl { font-weight: 600; }
   .sync .s { color: var(--ma-muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mbox { width: 100%; max-width: 420px; }
+  .mbox .label { margin-top: 4px; }
+  .mbox .sync { margin-top: 0; padding: 7px 0; }
+  .mbox .sync:first-of-type { border-top: 0; }
+  .mbox .sync .lbl { width: 92px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--ma-accent); color: #fff; margin-left: 6px; vertical-align: 1px; }
   .badge.f { background: var(--ma-bg2); color: inherit; }
   .favhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
@@ -229,12 +234,30 @@
         <button class="ib main" data-c="play_pause">${svg(p.state === 'playing' ? 'pause' : 'play')}</button>
         <button class="ib" data-c="next">${svg('next')}</button>
       </div>` : `<div class="hint">${T('Nothing in the queue.')}</div><button class="link" data-go="search">${T('Choose music or radio')}</button>`}
-      ${volumeRow(p)}</div>`;
+      ${volumeRow(p)}${masterBox()}</div>`;
     bindPlayerControls($('nowBox'), p);
+    $('nowBox').querySelectorAll('[data-mid]').forEach((b) => b.onclick = () => {
+      const mp = player(b.dataset.mid); if (!mp) return;
+      const on = !(mp.members || []).length;
+      $('nowBox').querySelectorAll('[data-mid]').forEach((x) => x.classList.toggle('on', on && x === b));
+      send('master', { id: mp.id, value: on });
+    });
     const fn = $('nowBox').querySelector('[data-favnow]');
     if (fn) fn.onclick = () => send('favAdd', { item: { type: p.mediaType, uri: p.uri, name: p.title, sub: p.artist, image: p.image } });
     const go = $('nowBox').querySelector('[data-go]');
     if (go) go.onclick = () => { MA.targets = new Set([p.id]); renderSearchChips(); show('search'); };
+  }
+
+  // Master-Schalter je Gerät: neuer Master übernimmt, laufende Musik wandert mit (Server)
+  function masterBox() {
+    const ps = MA.state.players.filter((p) => p.available && (p.canGroup || []).some((id) => id !== p.id && player(id) && player(id).available));
+    if (ps.length < 2) return '';
+    const names = (ids) => ids.map((m) => (player(m) || {}).name || m).join(', ');
+    return `<div class="mbox"><div class="label">${T('Master')}</div>` + ps.map((p) => {
+      const on = (p.members || []).length > 0;
+      const sub = on ? T('Plays in sync with') + ' ' + names(p.members) : (p.syncedTo ? T('Plays in sync with') + ' ' + names([p.syncedTo]) : stateText(p));
+      return `<div class="sync"><span class="lbl">${esc(p.name)}</span><span class="s">${esc(sub)}</span><button class="switch ${on ? 'on' : ''}" data-mid="${esc(p.id)}" title="${T('Master')}"></button></div>`;
+    }).join('') + '</div>';
   }
 
   function volumeRow(p) {
